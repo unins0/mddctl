@@ -46,6 +46,13 @@ static const char *filterTable[] = {
     "Non Oversampling"
 };
 
+struct Settings{
+    int volume;
+    int filter_state;
+    int gain_state;
+    int indicator_state;
+    libusb_device_handle *dac;
+  };
 
 std::array<uint8_t, DATA_BUFFER_SIZE> read(libusb_device_handle *dac, uint8_t *request) {
     std::array<uint8_t, DATA_BUFFER_SIZE> data = {0};
@@ -151,6 +158,16 @@ void set_volume(libusb_device_handle *dac, char *argv){
     }
 }
 
+void set_volume(libusb_device_handle *dac, int *value){
+    if ((*value >= 0) && (*value <= 60)){
+        uint8_t cmd[4] = {SET_VOLUME[0], SET_VOLUME[1], SET_VOLUME[2], to_uint8((uint8_t)*value)};
+        write(dac, cmd);
+    } else {
+        std::cout << "invalid value: set value in range (0 - 60)" << std::endl;
+    }
+}
+
+
 
 void set_filter(libusb_device_handle *dac, char *argv){
     int value = atoi(argv);
@@ -167,6 +184,21 @@ void set_filter(libusb_device_handle *dac, char *argv){
     }
 }
 
+void set_filter(libusb_device_handle *dac, int *value){
+    if ((*value >= 0) && (*value <= 4)){
+        uint8_t cmd[4] = {SET_FILTER[0], SET_FILTER[1], SET_FILTER[2], (uint8_t)*value};
+        write(dac, cmd);
+    } else {
+        std::cout << "invalud value: set value in range (0 - 4):" << std::endl;
+        std::cout << "  0: Fast Roll Off Low Latency" << std::endl;
+        std::cout << "  1: Fast Roll Off Phase Compensated" << std::endl;
+        std::cout << "  2: Slow Roll Off Low Latency" << std::endl;
+        std::cout << "  3: Slow Roll Off Phase Compensated" << std::endl;
+        std::cout << "  4: Non Oversampling" << std::endl;
+    }
+}
+
+
 
 void set_gain(libusb_device_handle *dac, char *argv){
     int value = atoi(argv);
@@ -181,6 +213,19 @@ void set_gain(libusb_device_handle *dac, char *argv){
 }
 
 
+void set_gain(libusb_device_handle *dac, int *value){
+    if ((*value >= 0) && (*value <= 1)){
+        uint8_t cmd[4] = {SET_GAIN[0], SET_GAIN[1], SET_GAIN[2], (uint8_t)*value};
+        write(dac, cmd);
+    } else {
+    std::cout << "invalid value: set value in range (0 - 1):" << std::endl;
+    std::cout << "  0: Low" << std::endl;
+    std::cout << "  1: High" << std::endl;
+    }
+}
+
+
+
 void set_indicator(libusb_device_handle *dac, char *argv){
     int value = atoi(argv);
     if ((value >= 0) && (value <= 3)){
@@ -193,5 +238,23 @@ void set_indicator(libusb_device_handle *dac, char *argv){
     std::cout << "  2: Off" << std::endl;
     }
 }
+
+void set_indicator(libusb_device_handle *dac, int *value){
+    if ((*value >= 0) && (*value <= 3)){
+        uint8_t cmd[4] = {SET_INDICATOR[0], SET_INDICATOR[1], SET_INDICATOR[2], (uint8_t)*value};
+        write(dac, cmd);
+    } else {
+    std::cout << "invalid value: set value in range (0 - 2):" << std::endl;
+    std::cout << "  0: on" << std::endl;
+    std::cout << "  1: Temp off" << std::endl;
+    std::cout << "  2: Off" << std::endl;
+    }
+}
+
+void refresh_data(Settings *settings){
+  std::array<uint8_t, DATA_BUFFER_SIZE> data = read(settings->dac, GET_ALL);
+  *settings = { get_volume(settings->dac), data[FILTER_IDX], data[GAIN_IDX],data[INDICATOR_IDX], settings->dac};
+}
+
 
 

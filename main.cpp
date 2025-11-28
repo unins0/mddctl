@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include "utils.cpp"
+#include "tui.cpp"
 
 int main(int argc, char *argv[]) {
     if (argc > 1){
@@ -51,6 +52,11 @@ int main(int argc, char *argv[]) {
             } else {
                 std::cout << "invalid command usage: " << argv[0] << " set <volume|filter|gain|indicator>" << std::endl;
             }
+        } else if (strcmp(argv[1], "tui") == 0){
+                std::array<uint8_t, DATA_BUFFER_SIZE> data = read(dac, GET_ALL);
+
+                Settings Curr_Settings = { get_volume(dac), data[FILTER_IDX], data[GAIN_IDX],data[INDICATOR_IDX], dac};
+                tui(Curr_Settings);
         } else {
             std::cerr << "Invalid command usage: " << argv[0] << " get|set|help" << std::endl;
             std::cout << "Commands:" << std::endl;
