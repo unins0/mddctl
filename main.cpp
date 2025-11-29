@@ -11,7 +11,6 @@ int main(int argc, char *argv[]) {
             std::cerr << "Error cold't intit libusb" << std::endl;
             return -status;
         }
-        //libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_DEBUG);
         libusb_device_handle *dac = libusb_open_device_with_vid_pid(NULL, MDDP_VID, MDDP_PID);
         if (!dac) {
             std::cerr << "dac not connected" << std::endl;
@@ -20,12 +19,11 @@ int main(int argc, char *argv[]) {
         if (strcmp(argv[1], "get") == 0){
             if (argc > 2){
                 if (strcmp(argv[2], "all") == 0){
-                    std::array<uint8_t, DATA_BUFFER_SIZE> data = read(dac, GET_ALL);
-                    std::cout << "Volume: " << get_volume(dac) << std::endl;
-                    std::cout << "Filter: " << filterTable[data[FILTER_IDX]] << std::endl;
-                    if (data[GAIN_IDX] == 0) { std::cout << "Gain: " << "Low" << std::endl; }
-                    else { std::cout << "Gain: " << "High" << std::endl; };
-                    std::cout << "Indicator: " << get_indicator(dac) << std::endl;
+                    Settings Curr_Settings = get_all(dac);
+                    std::cout << "Volume: " << Curr_Settings.volume << std::endl;
+                    std::cout << "Filter: " << filterTable[Curr_Settings.filter_state] << std::endl;
+                    (Curr_Settings.gain_state == 0) ? std::cout << "Gain: " << "Low" << std::endl: std::cout << "Gain: " << "High" << std::endl;
+                    std::cout << "Indicator: " << indicatorTable[Curr_Settings.indicator_state] << std::endl;
                 } else if (strcmp(argv[2], "volume") == 0) {
                     std::cout << get_volume(dac) << std::endl;
                 } else if (strcmp(argv[2], "filter") == 0) {
@@ -53,10 +51,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "invalid command usage: " << argv[0] << " set <volume|filter|gain|indicator>" << std::endl;
             }
         } else if (strcmp(argv[1], "tui") == 0){
-                std::array<uint8_t, DATA_BUFFER_SIZE> data = read(dac, GET_ALL);
-
-                Settings Curr_Settings = { get_volume(dac), data[FILTER_IDX], data[GAIN_IDX],data[INDICATOR_IDX], dac};
-                tui(Curr_Settings);
+                tui(get_all(dac));
         } else {
             std::cerr << "Invalid command usage: " << argv[0] << " get|set|help" << std::endl;
             std::cout << "Commands:" << std::endl;

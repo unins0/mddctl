@@ -29,6 +29,7 @@ static constexpr size_t GAIN_IDX = 4;
 static constexpr size_t INDICATOR_IDX = 5;
 static constexpr size_t DATA_BUFFER_SIZE = 7;
 
+
 static const uint8_t volumeTable[][2] = {
     {255,0},{200,1},{180,2},{170,3},{160,4},{150,5},{140,6},{130,7},{122,8},{116,9},
     {110,10},{106,11},{102,12},{98,13},{94,14},{90,15},{88,16},{86,17},{84,18},{82,19},
@@ -38,6 +39,7 @@ static const uint8_t volumeTable[][2] = {
     {14,53},{12,54},{10,55},{8,56},{6,57},{4,58},{2,59},{0,60}
     };
 
+
 static const char *filterTable[] = {
     "Fast Roll Off Low Latency",
     "Fast Roll Off Phase Compensated",
@@ -46,6 +48,14 @@ static const char *filterTable[] = {
     "Non Oversampling"
 };
 
+
+static const char *indicatorTable[] = {
+    "on",
+    "temp off",
+    "off"
+};
+
+
 struct Settings{
     int volume;
     int filter_state;
@@ -53,6 +63,7 @@ struct Settings{
     int indicator_state;
     libusb_device_handle *dac;
   };
+
 
 std::array<uint8_t, DATA_BUFFER_SIZE> read(libusb_device_handle *dac, uint8_t *request) {
     std::array<uint8_t, DATA_BUFFER_SIZE> data = {0};
@@ -85,6 +96,7 @@ std::array<uint8_t, DATA_BUFFER_SIZE> read(libusb_device_handle *dac, uint8_t *r
     return data;
 }
 
+
 int write(libusb_device_handle *dac, uint8_t *request) {
     auto transfer = libusb_control_transfer(
             dac,
@@ -102,6 +114,7 @@ int write(libusb_device_handle *dac, uint8_t *request) {
     return 0;
 }
 
+
 int to_normal(uint8_t raw) {
     for (const auto &entry : volumeTable) {
         if (raw == entry[0]) {
@@ -114,6 +127,66 @@ int to_normal(uint8_t raw) {
 
 int get_volume(libusb_device_handle *dac){
     return to_normal(read(dac, GET_VOLUME)[VOLUME_IDX]);
+}
+
+
+Settings get_all(libusb_device_handle *dac) {
+    std::array<uint8_t, DATA_BUFFER_SIZE> data = {0};
+    std::array<uint8_t, DATA_BUFFER_SIZE> volume_data = {0};
+    auto transfer = libusb_control_transfer(
+        dac,
+        LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_OTHER,
+        REQUEST_ID_WRITE,
+        REQUEST_VALUE,
+        REQUEST_INDEX,
+        GET_ALL,
+        3,
+        0
+        );
+    if (transfer < 0) {
+        std::cerr << "Error submitting transfer: " << libusb_error_name(transfer) << std::endl;
+    }
+    transfer = libusb_control_transfer(
+        dac,
+        LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_OTHER | LIBUSB_ENDPOINT_IN,
+        REQUEST_ID_READ,
+        REQUEST_VALUE,
+        REQUEST_INDEX,
+        &data[0],
+        DATA_BUFFER_SIZE,
+        0
+        );
+    if (transfer < 0) {
+        std::cerr << "Error submitting transfer: " << libusb_error_name(transfer) << std::endl;
+    }
+    auto transfer_volume = libusb_control_transfer(
+            dac,
+            LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_OTHER,
+            REQUEST_ID_WRITE,
+            REQUEST_VALUE,
+            REQUEST_INDEX,
+            GET_VOLUME,
+            3,
+            0
+            );
+        if (transfer_volume < 0) {
+            std::cerr << "Error submitting transfer: " << libusb_error_name(transfer_volume) << std::endl;
+        }
+        transfer_volume = libusb_control_transfer(
+            dac,
+            LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_OTHER | LIBUSB_ENDPOINT_IN,
+            REQUEST_ID_READ,
+            REQUEST_VALUE,
+            REQUEST_INDEX,
+            &volume_data[0],
+            DATA_BUFFER_SIZE,
+            0
+            );
+        if (transfer_volume < 0) {
+            std::cerr << "Error submitting transfer: " << libusb_error_name(transfer_volume) << std::endl;
+        }
+    Settings Curr_Settings = { to_normal(volume_data[VOLUME_IDX]), data[FILTER_IDX], data[GAIN_IDX],data[INDICATOR_IDX], dac};
+    return Curr_Settings;
 }
 
 
@@ -135,6 +208,7 @@ const char *get_indicator(libusb_device_handle *dac) {
         default: return "Off";
     }
 }
+
 
 const char *get_gain(libusb_device_handle *dac) {
     int gain = static_cast<int>(read(dac, GET_ALL)[GAIN_IDX]);
@@ -158,6 +232,7 @@ void set_volume(libusb_device_handle *dac, char *argv){
     }
 }
 
+
 void set_volume(libusb_device_handle *dac, int *value){
     if ((*value >= 0) && (*value <= 60)){
         uint8_t cmd[4] = {SET_VOLUME[0], SET_VOLUME[1], SET_VOLUME[2], to_uint8((uint8_t)*value)};
@@ -166,7 +241,6 @@ void set_volume(libusb_device_handle *dac, int *value){
         std::cout << "invalid value: set value in range (0 - 60)" << std::endl;
     }
 }
-
 
 
 void set_filter(libusb_device_handle *dac, char *argv){
@@ -184,6 +258,7 @@ void set_filter(libusb_device_handle *dac, char *argv){
     }
 }
 
+
 void set_filter(libusb_device_handle *dac, int *value){
     if ((*value >= 0) && (*value <= 4)){
         uint8_t cmd[4] = {SET_FILTER[0], SET_FILTER[1], SET_FILTER[2], (uint8_t)*value};
@@ -197,7 +272,6 @@ void set_filter(libusb_device_handle *dac, int *value){
         std::cout << "  4: Non Oversampling" << std::endl;
     }
 }
-
 
 
 void set_gain(libusb_device_handle *dac, char *argv){
@@ -225,7 +299,6 @@ void set_gain(libusb_device_handle *dac, int *value){
 }
 
 
-
 void set_indicator(libusb_device_handle *dac, char *argv){
     int value = atoi(argv);
     if ((value >= 0) && (value <= 3)){
@@ -239,6 +312,7 @@ void set_indicator(libusb_device_handle *dac, char *argv){
     }
 }
 
+
 void set_indicator(libusb_device_handle *dac, int *value){
     if ((*value >= 0) && (*value <= 3)){
         uint8_t cmd[4] = {SET_INDICATOR[0], SET_INDICATOR[1], SET_INDICATOR[2], (uint8_t)*value};
@@ -251,10 +325,7 @@ void set_indicator(libusb_device_handle *dac, int *value){
     }
 }
 
+
 void refresh_data(Settings *settings){
-  std::array<uint8_t, DATA_BUFFER_SIZE> data = read(settings->dac, GET_ALL);
-  *settings = { get_volume(settings->dac), data[FILTER_IDX], data[GAIN_IDX],data[INDICATOR_IDX], settings->dac};
+  *settings = get_all(settings -> dac);
 }
-
-
-

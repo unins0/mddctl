@@ -68,13 +68,6 @@ void tui(Settings Curr_Settings){
       0,
       60,
       1
-      //ftxui::RadioboxOption{
-      //  .on_change = [&] {
-      //    if (Old_Settings.volume != Curr_Settings.volume){
-      //      set_volume(Curr_Settings.dac, &Curr_Settings.volume);
-      //      Old_Settings.volume = Curr_Settings.volume;
-      //    }
-      //  }
       );
 
   auto refresh_button = ftxui::Button(
@@ -152,8 +145,6 @@ auto apply_volume_event = ftxui::CatchEvent(
     return false;
     }
   );
-
-
 
   screen.Loop(renderer);
 }
